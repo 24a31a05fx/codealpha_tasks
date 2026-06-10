@@ -6,6 +6,7 @@ Add or remove classifiers by editing MODEL_REGISTRY — no other file needs chan
 """
 
 import numpy as np
+from sklearn.base import clone
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -13,6 +14,7 @@ from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from config import RANDOM_STATE, CV_FOLDS
@@ -72,8 +74,14 @@ def train_all(
 
         # ── Metrics ───────────────────────────────────────────────────────────
         acc    = accuracy_score(y_test, y_pred)
-        cv     = cross_val_score(
-            model, scaler.transform(X_full), y_full, cv=CV_FOLDS, scoring="accuracy"
+        cv_model = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("model", clone(model)),
+            ]
+        )
+        cv = cross_val_score(
+            cv_model, X_full, y_full, cv=CV_FOLDS, scoring="accuracy"
         )
         report = classification_report(
             y_test, y_pred, target_names=le.classes_, output_dict=True
@@ -90,9 +98,9 @@ def train_all(
         }
 
         print(
-            f"  ✓ {name:<28s}  "
+            f"  OK {name:<28s}  "
             f"acc={acc*100:.1f}%  "
-            f"cv={cv.mean()*100:.1f}% ± {cv.std()*100:.1f}%"
+            f"cv={cv.mean()*100:.1f}% +/- {cv.std()*100:.1f}%"
         )
 
     return results
